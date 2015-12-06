@@ -76,19 +76,17 @@ class MyController:
 	#print robot.getConfig()
         if self.state == 'waiting':
             #TODO: do something..
-	    # Hardcoded - Get into batting position
+	    # Hardcoded - Get into batting position (can't control velocity)
 	    #robotController.setPIDCommand(self.qdes,[0,30,-42,-10,-30,0,0])
-	    #robotController.setVelocity([.01,.01,.01,.01,.01,.01,.01],2000)
-	    #self.qdes = self.robotController.getCommandedConfig()
-	    #self.dqdes = self.robotController.getCommandedVelocity()
 	    
-	    self.qdes = [0,1,-1.5,1,0,-1,1.5]
+	    # Motion Queue Method
+	    self.qdes = [0,1,-1.5,.9,0,-.9,1.5]
 	    self.dqdes = [0,0,0,0,0,0,0]
-	    dt = 1
-	    #robotController.setMilestone(self.qdes,self.dqdes)
+	    dt = .5
 	    robotController.setMilestone([0.0]*7,self.dqdes)
-	    robotController.setLinear(self.qdes,dt)
-	    # More flexible method (?)
+	    robotController.setCubic(self.qdes,self.dqdes,dt)
+
+	    # IK Method (can't control velocity)
 	    """
 	    target = [.1,.1,.1]
 	    link = robot.getLink(6)

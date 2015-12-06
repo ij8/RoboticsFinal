@@ -80,11 +80,11 @@ class MyController:
 	    #robotController.setPIDCommand(self.qdes,[0,30,-42,-10,-30,0,0])
 	    
 	    # Motion Queue Method
-	    self.qdes = [0,1,-1.5,1,0,-1,1.5]
+	    self.qdes = [0,1,-1.5,.9,0,-.9,1.5]
 	    self.dqdes = [0,0,0,0,0,0,0]
-	    dt = 1
+	    dt = .5
 	    robotController.setMilestone([0.0]*7,self.dqdes)
-	    robotController.setLinear(self.qdes,dt)
+	    robotController.setCubic(self.qdes,self.dqdes,dt)
 
 	    # IK Method (can't control velocity)
 	    """
