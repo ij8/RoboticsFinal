@@ -76,31 +76,12 @@ class MyController:
 	#print robot.getConfig()
         if self.state == 'waiting':
             #TODO: do something..
-	    # Hardcoded - Get into batting position (can't control velocity)
-	    #robotController.setPIDCommand(self.qdes,[0,30,-42,-10,-30,0,0])
-	    
 	    # Motion Queue Method
 	    self.qdes = [0,1,-1.5,.9,0,-.9,1.5]
 	    self.dqdes = [0,0,0,0,0,0,0]
 	    dt = .5
 	    robotController.setMilestone([0.0]*7,self.dqdes)
 	    robotController.setCubic(self.qdes,self.dqdes,dt)
-
-	    # IK Method (can't control velocity)
-	    """
-	    target = [.1,.1,.1]
-	    link = robot.getLink(6)
-	    #print robot.numLinks()
-	    #print robot.getConfig()
-	    goal = ik.objective(link,local = [1,0,0], world = target)
-	    if ik.solve(goal):
-		print "IK success!"
-    	    else:
-		print "IK failure..."
-	    self.qdes = robot.getConfig()
-            dqdes = [0]*7
-            robotController.setPIDCommand(self.qdes,dqdes)
-	    """
 	    pass
         elif self.state == 'user':
             #use the user-mode control
