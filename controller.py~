@@ -73,35 +73,48 @@ class MyController:
         vsns = robotController.getSensedVelocity()
 	# Obtains the model for the robot        
 	robot = self.world.robot(0)
-	#print robot.getConfig()
         if self.state == 'waiting':
             #TODO: do something..
-	    # Hardcoded - Get into batting position (can't control velocity)
-	    #robotController.setPIDCommand(self.qdes,[0,30,-42,-10,-30,0,0])
-	    
-	    # Motion Queue Method
-	    self.qdes = [0,1,-1.5,.9,0,-.9,1.5]
+	    # Motion Queue Method for Batting
+	    self.qdes = [0,1.3,-1.5,.9,0,-.9,1.5]
+	    # Alternative batting position
+	    #self.qdes = [0,1,-2.3,-.7,1.5,0,0]
 	    self.dqdes = [0,0,0,0,0,0,0]
-	    dt = .5
+	    dt = 1
 	    robotController.setMilestone([0.0]*7,self.dqdes)
 	    robotController.setCubic(self.qdes,self.dqdes,dt)
-
-	    # IK Method (can't control velocity)
-	    """
-	    target = [.1,.1,.1]
-	    link = robot.getLink(6)
-	    #print robot.numLinks()
-	    #print robot.getConfig()
-	    goal = ik.objective(link,local = [1,0,0], world = target)
-	    if ik.solve(goal):
-		print "IK success!"
-    	    else:
-		print "IK failure..."
-	    self.qdes = robot.getConfig()
-            dqdes = [0]*7
-            robotController.setPIDCommand(self.qdes,dqdes)
-	    """
-	    pass
+	    count = 0
+	    for i in range(0,len(qcmd)):
+		if int(qcmd[i]*10) == int(qsns[i]*10):
+		    count += 1
+	    if count == len(qcmd):
+	        self.state = 'sensing'
+	elif self.state == 'sensing':
+	    wallCount = 0
+	    clearCount = 0
+	    for obj in objectStateEstimate.objects:
+		if obj.meanPosition()[2] > .2:
+		    wallCount += 1		
+		    if obj.meanPosition()[1] > 1 or obj.meanPosition()[1] < 0:
+			clearCount += 1
+	    if clearCount == wallCount:
+		self.state = 'strike' 
+	elif self.state == 'strike':
+	    # Motion Queue Method for Striking
+	    self.qdes = [0,2,-1.5,.9,0,-.9,1.5]
+	    self.dqdes = [0,0,0,0,0,0,0]
+	    dt = .2
+	    robotController.setMilestone([0.0]*7,self.dqdes)
+	    robotController.setCubic(self.qdes,self.dqdes,dt)
+	    count = 0
+	    for i in range(0,len(qcmd)):
+		if int(qcmd[i]*10) == int(qsns[i]*10):
+		    count += 1
+	    if count == len(qcmd):
+	        self.state = 'waiting'
+	    print qsns
+	    print qcmd
+	    print count
         elif self.state == 'user':
             #use the user-mode control
             robotController.setPIDCommand(self.qdes,[0.0]*7)
@@ -184,6 +197,14 @@ class MyController:
         object position / velocity estimates from your state estimator.  Event C
         folks should set gravity=0 in the following code.
         """
+	glDisable(GL_LIGHTING)
+	glColor3f(100,100,100)
+	glPointSize(5.0)
+	gldraw.point([0,0,0])
+	gldraw.point([1,0,0])
+	gldraw.point([0,1,0])
+	gldraw.point([0,0,1])
+	gldraw.point([2.025,0,0])
         if self.objectEstimates:
             for o in self.objectEstimates.objects:
                 glDisable(GL_LIGHTING)
