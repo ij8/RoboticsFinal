@@ -77,25 +77,28 @@ class MyController:
             #TODO: do something..
 	    # Motion Queue Method for Batting
 	    self.qdes = [0,1.3,-1.5,.9,0,-.9,1.5]
-	    # Alternative batting position
-	    #self.qdes = [0,1,-2.3,-.7,1.5,0,0]
 	    self.dqdes = [0,0,0,0,0,0,0]
-	    dt = 1
+	    dt = .7
 	    robotController.setMilestone([0.0]*7,self.dqdes)
 	    robotController.setCubic(self.qdes,self.dqdes,dt)
 	    count = 0
 	    for i in range(0,len(qcmd)):
-		if int(qcmd[i]*10) == int(qsns[i]*10):
+		if round(qcmd[i]*10**6) == round(qsns[i]*10**6):
 		    count += 1
 	    if count == len(qcmd):
 	        self.state = 'sensing'
 	elif self.state == 'sensing':
+	    """
+		The following code uses the blob detector 
+		to check and see if walls are clear from 
+		the target region
+	    """
 	    wallCount = 0
 	    clearCount = 0
 	    for obj in objectStateEstimate.objects:
 		if obj.meanPosition()[2] > .2:
 		    wallCount += 1		
-		    if obj.meanPosition()[1] > 1 or obj.meanPosition()[1] < 0:
+		    if obj.meanPosition()[1] > 0 or obj.meanPosition()[1] < -1:
 			clearCount += 1
 	    if clearCount == wallCount:
 		self.state = 'strike' 
@@ -108,13 +111,10 @@ class MyController:
 	    robotController.setCubic(self.qdes,self.dqdes,dt)
 	    count = 0
 	    for i in range(0,len(qcmd)):
-		if int(qcmd[i]*10) == int(qsns[i]*10):
+		if round(qcmd[i]*10**6) == round(qsns[i]*10**6):
 		    count += 1
 	    if count == len(qcmd):
 	        self.state = 'waiting'
-	    print qsns
-	    print qcmd
-	    print count
         elif self.state == 'user':
             #use the user-mode control
             robotController.setPIDCommand(self.qdes,[0.0]*7)
