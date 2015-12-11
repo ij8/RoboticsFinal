@@ -110,7 +110,7 @@ class MyController:
 		if obj.meanPosition()[0] > .2:
 		    wallCount += 1	
 		    # Check if mean position of y coordinate of obj is in line of fire	
-		    if obj.meanPosition()[1] > 1 or obj.meanPosition()[1] < 0:
+		    if obj.meanPosition()[1] > .75 or obj.meanPosition()[1] < -.75:
 			clearCount += 1
 		# Check if the ball is in its spawning position
 		if round(obj.meanPosition()[0]*10) == round(-1*10) and round(obj.meanPosition()[1]*10) == round(-.5*10):
@@ -126,32 +126,41 @@ class MyController:
 		(2 second estimate). If a potentially free region exists,
 		set the angle of the end effector and strike.
 	    """ 
+	    
 	    # Establish velocity 
 	    if self.prevObjectState == None:
 		self.prevObjectState = objectStateEstimate.objects
 	    else:
 		# Calculate and store predicted positions (assume 2 sec to get to goal)
-		predictedMeanPos = []
+		predictedMeanPos = [0,0,0]
 		ball = 0
+		wallCount = 0
 		for i in range(0,len(self.prevObjectState)):
 		    if objectStateEstimate.objects[i].meanPosition()[0] > .2:
 		    	prevy = self.prevObjectState[i].meanPosition()[1]
 		    	curry = objectStateEstimate.objects[i].meanPosition()[1]
 		    	velocity = (curry - prevy)/dt
-		    	predictedMeanPos += [curry + velocity*2.0]
+			print velocity
+		    	predictedMeanPos[wallCount] = curry + velocity*2.0
+			wallCount += 1
 		    # Check if the ball is in its spawning position
 		    elif round(objectStateEstimate.objects[i].meanPosition()[0]*10) == round(-1*10) and round(objectStateEstimate.objects[i].meanPosition()[1]*10) == round(-.5*10):
 		    	ball = 1
 		# Iterate through potential targets and see if open
+		print '--------------------'
+		print 'predicted pos'
+		print predictedMeanPos
+		print dt
+		print '--------------------'
 		target = -1
 		res = 100
 		for i in range(1,res+1):
 		    # Total goal width approx 2, resoltuion 100
-		    currTarget = float(2.0/i - 1.0)
+		    currTarget = float(2.0/float(i) - 1.0)
 		    # Count number of obstacles outside target window
 		    count = 0
 		    for j in range(0,len(predictedMeanPos)):
-			if float(abs(float(predictedMeanPos[j])-currTarget)) > .75:
+			if abs(predictedMeanPos[j]-currTarget) > .75:
 			    count += 1
 		    # Update the target if it's open
 		    # Note: In terms of res unit (easier to convert to
