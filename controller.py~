@@ -76,44 +76,69 @@ class MyController:
         if self.state == 'waiting':
             #TODO: do something..
 	    # Motion Queue Method for Batting
-	    self.qdes = [0,1.3,-1.5,.9,0,-.9,1.5]
+	    self.qdes = [0,1.3,-2.37,-.8,1.5,.4,0]
 	    self.dqdes = [0,0,0,0,0,0,0]
-	    dt = .7
+	    dt = 1
 	    robotController.setMilestone([0.0]*7,self.dqdes)
 	    robotController.setCubic(self.qdes,self.dqdes,dt)
 	    count = 0
-	    for i in range(0,len(qcmd)):
-		if round(qcmd[i]*10**6) == round(qsns[i]*10**6):
+	    qsns = robotController.getSensedConfig()
+	    for i in range(0,len(self.qdes)):
+		if round(self.qdes[i]*10**2) == round(qsns[i]*10**2):
 		    count += 1
-	    if count == len(qcmd):
+	    if count == len(self.qdes):
 	        self.state = 'sensing'
 	elif self.state == 'sensing':
 	    """
 		The following code uses the blob detector 
 		to check and see if walls are clear from 
 		the target region
+		[x,y,z] = [front, left, up]
 	    """
 	    wallCount = 0
 	    clearCount = 0
+	    ball =0
 	    for obj in objectStateEstimate.objects:
-		if obj.meanPosition()[2] > .2:
+		print obj.meanPosition()
+		if obj.meanPosition()[0] > .2:
 		    wallCount += 1		
-		    if obj.meanPosition()[1] > 0 or obj.meanPosition()[1] < -1:
+		    if obj.meanPosition()[1] > .25 or obj.meanPosition()[1] < -.25:
 			clearCount += 1
-	    if clearCount == wallCount:
+		if round(obj.meanPosition()[0]*10) == round(-1*10) and round(obj.meanPosition()[1]*10) == round(-.5*10):
+		    ball = 1
+	    if clearCount == wallCount and ball == 1:
 		self.state = 'strike' 
 	elif self.state == 'strike':
 	    # Motion Queue Method for Striking
-	    self.qdes = [0,2,-1.5,.9,0,-.9,1.5]
+	    #self.qdes = [0,1.8,-2.37,-.8,1.5,.4,0]
+	    self.qdes[1] = 1.8
+	    self.dqdes = [0,0,0,0,0,0,0]
+	    dt = .1
+	    robotController.setMilestone([0.0]*7,self.dqdes)
+	    robotController.setCubic(self.qdes,self.dqdes,dt)
+	    count = 0
+	    qsns = robotController.getSensedConfig()
+	    for i in range(0,len(self.qdes)):
+		if round(self.qdes[i]*10**2) == round(qsns[i]*10**2):
+		    count += 1
+	    print self.state
+	    if count == len(self.qdes):
+	        self.state = 'reverting'
+	elif self.state == 'reverting':
+	    # Motion Queue Method for Striking
+	    #self.qdes = [0,1.7,-2,-.7,1.5,.4,0]
+	    self.qdes[2] = -2
 	    self.dqdes = [0,0,0,0,0,0,0]
 	    dt = .2
 	    robotController.setMilestone([0.0]*7,self.dqdes)
 	    robotController.setCubic(self.qdes,self.dqdes,dt)
 	    count = 0
-	    for i in range(0,len(qcmd)):
-		if round(qcmd[i]*10**6) == round(qsns[i]*10**6):
+	    qsns = robotController.getSensedConfig()
+	    for i in range(0,len(self.qdes)):
+		if round(self.qdes[i]*10**2) == round(qsns[i]*10**2):
 		    count += 1
-	    if count == len(qcmd):
+	    print self.state
+	    if count == len(self.qdes):
 	        self.state = 'waiting'
         elif self.state == 'user':
             #use the user-mode control
@@ -123,8 +148,7 @@ class MyController:
             #TODO: do something else...
             #may want to add other states into this if block...
             pass
-        return
-        
+        return   
     def loop(self,dt,robotController,sensorReadings):
         """Called every control loop (every dt seconds).
         Input:
