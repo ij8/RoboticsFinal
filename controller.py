@@ -110,9 +110,11 @@ class MyController:
         # Obtains the model for the robot       
         robot = self.world.robot(0)
         if self.state == 'waiting':
+            """
             if self.tries == self.maxTries:
               self.state = 'done'
               pass
+            """
             #TODO: do something..
             # Motion Queue Method for Batting
             self.qdes = [0,1.3,-2.37,-.8,1.5,.3,0]
@@ -150,13 +152,14 @@ class MyController:
                 predictedMeanPos = []
                 for i in range(0,len(currentWallSnap)):
                     # Assumption that it takes 2.5 seconds to reach 
-                    t = 1
+                    t = 1.5
                     x0 = self.prevWallPos[-1][i]
                     v0 = self.prevWallVel[-1][i]
                     a0 = self.prevWallAcc[-1][i]
                     j0 = self.prevWallJer[-1][i]
                     s = currentWallSnap[i]
                     predictedMeanPos += [x0 + v0*t + a0*t**2/2 + j0*t**3/6 + s*t**4/12]
+                print predictedMeanPos
                 self.prevWallPos.pop(0)
                 self.prevWallVel.pop(0)
                 self.prevWallAcc.pop(0)
@@ -202,7 +205,7 @@ class MyController:
         elif self.state == 'strike':
             # Motion Queue Method for Striking
             self.qdes[1] = 1.8
-            self.setRobotConfig(robotController,.2)
+            self.setRobotConfig(robotController,.22)
             if self.checkCompleteConfig(robotController,'reverting'):
                 self.tries += 1
         elif self.state == 'reverting':
