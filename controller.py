@@ -37,9 +37,15 @@ class MyController:
         #The 'waiting' state is just a placeholder and you are free to
         #change it as you see fit.
         self.qdes = robotController.getCommandedConfig()
-        # Initializing velocity tracker for objects
-        self.prevObjectState = None
+        # Initializing variable to contain list of previous object states
+        # for displacement estimation. First element = oldest state
+        self.prevWallPos = []
+        self.prevWallVel = []
+        self.prevWallAcc = []
+        self.prevWallJer = []
+        # Counter for number of tries the robot has made
         self.tries = 0
+        # Global variable to set the number of tries
         self.maxTries = 10
         pass
     def checkCompleteConfig(self,robotController,nextState):
@@ -54,6 +60,19 @@ class MyController:
     def setRobotConfig(self,robotController,dt):
         robotController.setMilestone([0.0]*7,[0.0]*7)
         robotController.setCubic(self.qdes,[0.0]*7,dt)
+    def getWallPos(self, objectStateEstimate):
+        output = []
+        for obj in objectStateEstimate.objects:
+            if obj.meanPosition()[0] > .2 and obj.meanPosition()[2] > .2:
+                output += [obj.meanPosition()[1]]
+        return output
+    def getWallDerivative(self, p1, p0, dt, n):
+        output = []
+        for i in range(0,len(p1)):
+            output += [(p1[i]-p0[i])/(n*dt)]
+        return output
+    def checkBall(self,objectStateEstimate):
+        return round(objectStateEstimate.objects[0].meanPosition()[0]*10) == round(-1*10) and round(objectStateEstimate.objects[0].meanPosition()[1]*10) == round(-.5*10)
     def myPlayerLogic(self,
                       dt,
                       sensorReadings,
@@ -82,10 +101,12 @@ class MyController:
           (if you are into masochism you can use robotController.setTorque())
         """
         #these are pulled out here for your convenience
+        """
         qcmd = robotController.getCommandedConfig()
         vcmd = robotController.getCommandedVelocity()
         qsns = robotController.getSensedConfig()
         vsns = robotController.getSensedVelocity()
+        """
         # Obtains the model for the robot       
         robot = self.world.robot(0)
         if self.state == 'waiting':
@@ -172,6 +193,83 @@ class MyController:
             print 'hello'
             for obj in objectStateEstimate.objects:
                 print obj.meanPosition()
+            """ 
+            Acquiring displacement estimate based on velocity, acceleration,
+            and jerk estimates. Need to use the following equation:
+            x(t) = x0 + v0t + a0t^2/2+j0t^3/6 + st^4/12
+            where:  x0 is the initial position
+                    v0 is the initial velocity
+                    a0 is the initial acceleration
+                    j0 is the initial jerk
+                    s is the snap
+            This requires using 5 points, so need to store 5 states in the
+            list self.prevWallPos. Calculating up to snap should be
+            sufficient in attaining reasonable position estimates
+            """
+            # Populate/update the historical position, velocity, and acceleration measurements
+            if len(self.prevWallPos) < 5:
+                self.prevWallPos += [self.getWallPos(objectStateEstimate)]
+                if len(self.prevWallPos) > 1 and len(self.prevWallVel) < 4:
+                    self.prevWallVel += [self.getWallDerivative(self.prevWallPos[-1],self.prevWallPos[-2],dt,1)]
+                    if len(self.prevWallVel) > 1 and len(self.prevWallAcc) < 3:
+                        self.prevWallAcc += [self.getWallDerivative(self.prevWallVel[-1],self.prevWallVel[-2],dt,2)]
+                        if len(self.prevWallAcc) > 1 and len(self.prevWallJer) < 2:
+                            self.prevWallJer += [self.getWallDerivative(self.prevWallPos[-1],self.prevWallPos[-2],dt,3)]
+            else:
+                # Predict positions of each wall
+                currentWallSnap = self.getWallDerivative(self.prevWallAcc[-1],self.prevWallAcc[-2],dt,4)
+                predictedMeanPos = []
+                for i in range(0,len(currentWallSnap)):
+                    # Assumption that it takes 2.5 seconds to reach 
+                    t = 1
+                    x0 = self.prevWallPos[-1][i]
+                    v0 = self.prevWallVel[-1][i]
+                    a0 = self.prevWallAcc[-1][i]
+                    j0 = self.prevWallJer[-1][i]
+                    s = currentWallSnap[i]
+                    predictedMeanPos += [x0 + v0*t + a0*t**2/2 + j0*t**3/6 + s*t**4/12]
+                self.prevWallPos.pop(0)
+                self.prevWallVel.pop(0)
+                self.prevWallAcc.pop(0)
+                self.prevWallJer.pop(0)
+                # Iterate through points in goal and find best target
+                target = -1
+                res = 100
+                maxDiff = 0
+                for i in range(1,res+1):
+                    # Total goal width approx 2, resoltuion 100
+                    currTarget = 1.0 - 2.0*float(i)/float(res)
+                    # Count number of obstacles outside target window
+                    count = 0
+                    diffs = []
+                    for j in range(0,len(predictedMeanPos)):
+                        if abs(predictedMeanPos[j]-currTarget) > 1:
+                            count += 1
+                            diffs += [abs(predictedMeanPos[j]-currTarget)]
+                    # Update the target if it's open
+                    # Note: In terms of res unit (easier to convert to
+                    # proper angle adjustment)
+                    if count == len(predictedMeanPos) and min(diffs) > maxDiff:
+                        maxDiff = min(diffs)
+                        target = i
+                # If a target is open and the ball is in its spawning 
+                # position, then set the angle (-.1 = rightmost, .8 = leftmost)
+                # and strike (also update preObjectState)
+                if target != -1 and self.checkBall(objectStateEstimate):
+                    self.qdes[5] = .8 - .9*float(target)/float(res)
+                    print '--------------------'
+                    print 'target coord:'
+                    print currTarget
+                    print 'target:'
+                    print target
+                    print 'angle:'
+                    print self.qdes[5]
+                    print 'Prev'
+                    print self.prevWallPos[-1]
+                    print 'predicted'
+                    print predictedMeanPos
+                    print '--------------------'
+                    self.state = 'strike'   
         elif self.state == 'strike':
             # Motion Queue Method for Striking
             self.qdes[1] = 1.8
