@@ -38,7 +38,8 @@ class MyController:
         #change it as you see fit.
         self.qdes = robotController.getCommandedConfig()
 	# Initializing velocity tracker for objects
-	self.prevObjectState = None 
+	self.prevObjectState = None
+	#self.timer = 0.0 
         pass
 
     def myPlayerLogic(self,
@@ -73,16 +74,17 @@ class MyController:
         vcmd = robotController.getCommandedVelocity()
         qsns = robotController.getSensedConfig()
         vsns = robotController.getSensedVelocity()
-	# Obtains the model for the robot        
+	# Obtains the model for the robot       
 	robot = self.world.robot(0)
+	#self.timer += dt
+	#print self.timer
         if self.state == 'waiting':
             #TODO: do something..
 	    # Motion Queue Method for Batting
 	    self.qdes = [0,1.3,-2.37,-.8,1.5,.3,0]
-	    self.dqdes = [0,0,0,0,0,0,0]
 	    dt = 1
-	    robotController.setMilestone([0.0]*7,self.dqdes)
-	    robotController.setCubic(self.qdes,self.dqdes,dt)
+	    robotController.setMilestone([0.0]*7,[0.0]*7)
+	    robotController.setCubic(self.qdes,[0.0]*7,dt)
 	    count = 0
 	    qsns = robotController.getSensedConfig()
 	    for i in range(0,len(self.qdes)):
@@ -97,12 +99,14 @@ class MyController:
 		region is currently free and if the ball has respawned. If 
 		these conditions hold then the robot strkes.
 	    """
-	    """
+	    #"""
 	    # Variables to keep track of number of walls overall, number
 	    # of walls that are clear of the specified region, and 
 	    # if the ball is spawned.
 	    wallCount = 0
-	    clearCount = 0
+	    leftClear = 0
+	    rightClear = 0
+	    centerClear = 0
 	    ball = 0
 	    # Check position of each object in the blob detector
 	    for obj in objectStateEstimate.objects:
@@ -110,15 +114,29 @@ class MyController:
 		if obj.meanPosition()[0] > .2:
 		    wallCount += 1	
 		    # Check if mean position of y coordinate of obj is in line of fire	
-		    if obj.meanPosition()[1] > .75 or obj.meanPosition()[1] < -.75:
-			clearCount += 1
+		    if obj.meanPosition()[1] > 1.25 or obj.meanPosition()[1] < -.25:
+			leftClear += 1
+		    if obj.meanPosition()[1] > .25 or obj.meanPosition()[1] < -1.25:
+			rightClear += 1
+		    if obj.meanPosition()[1] > .5 or obj.meanPosition()[1] < -.5:
+			centerClear += 1
 		# Check if the ball is in its spawning position
 		if round(obj.meanPosition()[0]*10) == round(-1*10) and round(obj.meanPosition()[1]*10) == round(-.5*10):
 		    ball = 1
+	    print 'left' + str(leftClear)
+	    print 'right' + str(rightClear)
+	    print 'center' + str(centerClear)
 	    # Strike if region clear and ball is present
-	    if clearCount == wallCount and ball == 1:
+	    if leftClear == wallCount and ball == 1:
+		self.qdes[5] = .7
 		self.state = 'strike'
-	    """
+	    elif rightClear == wallCount and ball == 1:
+		self.qdes[5] = -.05
+		self.state = 'strike'
+	    elif centerClear == wallCount and ball == 1:
+		self.qdes[5] = .3
+		self.state = 'strike'
+	    #"""
 	
 	    """
 		The algorithm below uses blob detector to check what regions
@@ -126,37 +144,30 @@ class MyController:
 		(2 second estimate). If a potentially free region exists,
 		set the angle of the end effector and strike.
 	    """ 
-	    
+	    """
 	    # Establish velocity 
 	    if self.prevObjectState == None:
 		self.prevObjectState = objectStateEstimate.objects
 	    else:
-		# Calculate and store predicted positions (assume 2 sec to get to goal)
-		predictedMeanPos = [0,0,0]
+		# Calculate and store predicted positions (assume 1 sec to get to goal)
+		predictedMeanPos = []
 		ball = 0
-		wallCount = 0
 		for i in range(0,len(self.prevObjectState)):
 		    if objectStateEstimate.objects[i].meanPosition()[0] > .2:
 		    	prevy = self.prevObjectState[i].meanPosition()[1]
 		    	curry = objectStateEstimate.objects[i].meanPosition()[1]
 		    	velocity = (curry - prevy)/dt
-			print velocity
-		    	predictedMeanPos[wallCount] = curry + velocity*2.0
-			wallCount += 1
+		    	predictedMeanPos += [curry + velocity*.02]
 		    # Check if the ball is in its spawning position
 		    elif round(objectStateEstimate.objects[i].meanPosition()[0]*10) == round(-1*10) and round(objectStateEstimate.objects[i].meanPosition()[1]*10) == round(-.5*10):
 		    	ball = 1
 		# Iterate through potential targets and see if open
-		print '--------------------'
-		print 'predicted pos'
-		print predictedMeanPos
-		print dt
-		print '--------------------'
+
 		target = -1
 		res = 100
 		for i in range(1,res+1):
 		    # Total goal width approx 2, resoltuion 100
-		    currTarget = float(2.0/float(i) - 1.0)
+		    currTarget = 1.0 - 2.0*float(i)/float(res)
 		    # Count number of obstacles outside target window
 		    count = 0
 		    for j in range(0,len(predictedMeanPos)):
@@ -172,24 +183,25 @@ class MyController:
 		# position, then set the angle (-.1 = rightmost, .8 = leftmost)
 		# and strike (also update preObjectState)
 		if target != -1 and ball == 1:
-		    self.qdes[5] = (.9/float(res))*float(target) - .1
+		    self.qdes[5] = .8 - .9*float(target)/float(res)
 		    print '--------------------'
+		    print 'target coord:'
+		    print currTarget
 		    print 'target:'
 		    print target
 		    print 'angle:'
 		    print self.qdes[5]
+		    print predictedMeanPos
 		    print '--------------------'
 		    self.preObjectState = objectStateEstimate.objects
 		    self.state = 'strike'		
-
+	    """
 	elif self.state == 'strike':
 	    # Motion Queue Method for Striking
-	    #self.qdes = [0,1.8,-2.37,-.8,1.5,.4,0]
 	    self.qdes[1] = 1.8
-	    self.dqdes = [0,0,0,0,0,0,0]
 	    dt = .11
-	    robotController.setMilestone([0.0]*7,self.dqdes)
-	    robotController.setCubic(self.qdes,self.dqdes,dt)
+	    robotController.setMilestone([0.0]*7,[0.0]*7)
+	    robotController.setCubic(self.qdes,[0.0]*7,dt)
 	    count = 0
 	    qsns = robotController.getSensedConfig()
 	    for i in range(0,len(self.qdes)):
@@ -199,13 +211,11 @@ class MyController:
 	        self.state = 'reverting'
 	elif self.state == 'reverting':
 	    # Motion Queue Method for Striking
-	    #self.qdes = [0,1.7,-2,-.7,1.5,.4,0]
 	    self.qdes[1] = 1.6
 	    self.qdes[2] = -2.2
-	    self.dqdes = [0,0,0,0,0,0,0]
 	    dt = .2
-	    robotController.setMilestone([0.0]*7,self.dqdes)
-	    robotController.setCubic(self.qdes,self.dqdes,dt)
+	    robotController.setMilestone([0.0]*7,[0.0]*7)
+	    robotController.setCubic(self.qdes,[0.0]*7,dt)
 	    count = 0
 	    qsns = robotController.getSensedConfig()
 	    for i in range(0,len(self.qdes)):
@@ -216,7 +226,6 @@ class MyController:
         elif self.state == 'user':
             #use the user-mode control
             robotController.setPIDCommand(self.qdes,[0.0]*7)
-	    #robotController.setPIDCommand(self.qdes,[0,0,0,0,0,0,0])
         else:
             #TODO: do something else...
             #may want to add other states into this if block...
