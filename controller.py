@@ -43,6 +43,7 @@ class MyController:
         self.prevWallVel = []
         self.prevWallAcc = []
         self.prevWallJer = []
+        self.sensorBuffer = 0
         # Counter for number of tries the robot has made
         self.tries = 0
         # Global variable to set the number of tries
@@ -110,9 +111,11 @@ class MyController:
         # Obtains the model for the robot       
         robot = self.world.robot(0)
         if self.state == 'waiting':
+            """
             if self.tries == self.maxTries:
               self.state = 'done'
               pass
+            """
             #TODO: do something..
             # Motion Queue Method for Batting
             self.qdes = [0,1.3,-2.37,-.8,1.5,.3,0]
@@ -122,6 +125,7 @@ class MyController:
             self.prevWallVel = []
             self.prevWallAcc = []
             self.prevWallJer = []
+            self.sensorBuffer = 0
         elif self.state == 'sensing':
             """ 
             Acquiring displacement estimate based on velocity, acceleration,
@@ -145,6 +149,13 @@ class MyController:
                         self.prevWallAcc += [self.getWallDerivative(self.prevWallVel[-1],self.prevWallVel[-2],dt,2)]
                         if len(self.prevWallAcc) > 1 and len(self.prevWallJer) < 2:
                             self.prevWallJer += [self.getWallDerivative(self.prevWallPos[-1],self.prevWallPos[-2],dt,3)]
+            # Buffer initial readings to weed out outliers from the first few readings
+            elif self.sensorBuffer < 15:
+                self.prevWallPos.pop(0)
+                self.prevWallVel.pop(0)
+                self.prevWallAcc.pop(0)
+                self.prevWallJer.pop(0)
+                self.sensorBuffer += 1
             else:
                 # Predict positions of each wall
                 currentWallSnap = self.getWallDerivative(self.prevWallAcc[-1],self.prevWallAcc[-2],dt,4)
