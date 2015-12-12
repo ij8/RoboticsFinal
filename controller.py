@@ -37,23 +37,23 @@ class MyController:
         #The 'waiting' state is just a placeholder and you are free to
         #change it as you see fit.
         self.qdes = robotController.getCommandedConfig()
-	# Initializing velocity tracker for objects
-	self.prevObjectState = None
-	self.tries = 0
-	self.maxTries = 10
-	#self.timer = 0.0 
+        # Initializing velocity tracker for objects
+        self.prevObjectState = None
+        self.tries = 0
+        self.maxTries = 10
         pass
-
     def checkCompleteConfig(self,robotController,nextState):
-	count = 0	
-	qsns = robotController.getSensedConfig()
-	for i in range(0,len(self.qdes)):
-	    if round(self.qdes[i]*10**2) == round(qsns[i]*10**2):
-		count += 1
-	if count == len(self.qdes):
-	    self.state = nextState
-	return count == len(self.qdes)
-
+        count = 0 
+        qsns = robotController.getSensedConfig()
+        for i in range(0,len(self.qdes)):
+            if round(self.qdes[i]*10**2) == round(qsns[i]*10**2):
+                count += 1
+        if count == len(self.qdes):
+            self.state = nextState
+        return count == len(self.qdes)
+    def setRobotConfig(self,robotController,dt):
+        robotController.setMilestone([0.0]*7,[0.0]*7)
+        robotController.setCubic(self.qdes,[0.0]*7,dt)
     def myPlayerLogic(self,
                       dt,
                       sensorReadings,
@@ -86,111 +86,107 @@ class MyController:
         vcmd = robotController.getCommandedVelocity()
         qsns = robotController.getSensedConfig()
         vsns = robotController.getSensedVelocity()
-	# Obtains the model for the robot       
-	robot = self.world.robot(0)
-	#self.timer += dt
-	#print self.timer
+        # Obtains the model for the robot       
+        robot = self.world.robot(0)
         if self.state == 'waiting':
-	    if self.tries == self.maxTries:
-		self.state = 'done'
-		pass
+            if self.tries == self.maxTries:
+              self.state = 'done'
+              pass
             #TODO: do something..
-	    # Motion Queue Method for Batting
-	    self.qdes = [0,1.3,-2.37,-.8,1.5,.3,0]
-	    dt = 1
-	    robotController.setMilestone([0.0]*7,[0.0]*7)
-	    robotController.setCubic(self.qdes,[0.0]*7,dt)
-	    self.checkCompleteConfig(robotController,'sensing')
-	elif self.state == 'sensing':
-	    """
-		The algorithm below uses blob detector to check what regions
-		might become free in by the time the ball would get to them
-		(2 second estimate). If a potentially free region exists,
-		set the angle of the end effector and strike.
-	    """ 
-	    # Establish velocity 
-	    if self.prevObjectState == None:
-		self.prevObjectState = objectStateEstimate.objects
-	    else:
-		# Calculate and store predicted positions (assume 1 sec to get to goal)
-		predictedMeanPos = []
-		currentMeanPos = []
-		prevMeanPos = []
-		ball = 0
-		for i in range(0,len(self.prevObjectState)):
-		    if objectStateEstimate.objects[i].meanPosition()[0] > .2:
-		    	prevy = self.prevObjectState[i].meanPosition()[1]
-		    	curry = objectStateEstimate.objects[i].meanPosition()[1]
-		    	velocity = (curry - prevy)/dt
-		    	predictedMeanPos += [curry + velocity*.01]
-			currentMeanPos += [curry]
-			prevMeanPos += [prevy]
-		    # Check if the ball is in its spawning position
-		    elif round(objectStateEstimate.objects[i].meanPosition()[0]*10) == round(-1*10) and round(objectStateEstimate.objects[i].meanPosition()[1]*10) == round(-.5*10):
-		    	ball = 1
-		# Iterate through potential targets and see if open
-
-		target = -1
-		res = 100
-		maxDiff = 0
-		for i in range(1,res+1):
-		    # Total goal width approx 2, resoltuion 100
-		    currTarget = 1.0 - 2.0*float(i)/float(res)
-		    # Count number of obstacles outside target window
-		    count = 0
-		    diffs = []
-		    for j in range(0,len(predictedMeanPos)):
-			if abs(predictedMeanPos[j]-currTarget) > 1:
-			    count += 1
-			    diffs += [abs(predictedMeanPos[j]-currTarget)]
-			    print min(diffs)
-		    # Update the target if it's open
-		    # Note: In terms of res unit (easier to convert to
-		    # proper angle adjustment)
-		    if count == len(predictedMeanPos) and min(diffs) > maxDiff:
-			maxDiff = min(diffs)
-			print maxDiff
-			target = i
-		# If a target is open and the ball is in its spawning 
-		# position, then set the angle (-.1 = rightmost, .8 = leftmost)
-		# and strike (also update preObjectState)
-		if target != -1 and ball == 1:
-		    self.qdes[5] = .8 - .9*float(target)/float(res)
-		    print '--------------------'
-		    print 'target coord:'
-		    print currTarget
-		    print 'target:'
-		    print target
-		    print 'angle:'
-		    print self.qdes[5]
-		    print 'Prev'
-		    print prevMeanPos
-		    print 'current'
-		    print currentMeanPos
-		    print 'predicted'
-		    print predictedMeanPos
-		    print '--------------------'
-		    self.preObjectState = objectStateEstimate.objects
-		    self.state = 'strike'		
-	elif self.state == 'strike':
-	    # Motion Queue Method for Striking
-	    self.qdes[1] = 1.8
-	    dt = .11
-	    robotController.setMilestone([0.0]*7,[0.0]*7)
-	    robotController.setCubic(self.qdes,[0.0]*7,dt)
-	    if self.checkCompleteConfig(robotController,'reverting'):
-		self.tries += 1
-	elif self.state == 'reverting':
-	    # Motion Queue Method for Striking
-	    self.qdes[1] = 1.6
-	    self.qdes[2] = -2.2
-	    dt = .2
-	    robotController.setMilestone([0.0]*7,[0.0]*7)
-	    robotController.setCubic(self.qdes,[0.0]*7,dt)
-	    self.checkCompleteConfig(robotController,'waiting')
-	elif self.state == 'done':
-	    print 'done'
-	    pass
+            # Motion Queue Method for Batting
+            self.qdes = [0,1.3,-2.37,-.8,1.5,.3,0]
+            self.setRobotConfig(robotController,1)
+            self.checkCompleteConfig(robotController,'sensing')
+        elif self.state == 'sensing':
+            """
+            The algorithm below uses blob detector to check what regions
+            might become free in by the time the ball would get to them
+            (2 second estimate). If a potentially free region exists,
+            set the angle of the end effector and strike.
+            """ 
+            """
+            # Establish velocity 
+            if self.prevObjectState == None:
+                self.prevObjectState = objectStateEstimate.objects
+            else:
+                # Calculate and store predicted positions (assume 1 sec to get to goal)
+                predictedMeanPos = []
+                currentMeanPos = []
+                prevMeanPos = []
+                velocity = []
+                ball = 0
+                for i in range(0,len(self.prevObjectState)):
+                    if objectStateEstimate.objects[i].meanPosition()[0] > .2:
+                        prevy = self.prevObjectState[i].meanPosition()[1]
+                        curry = objectStateEstimate.objects[i].meanPosition()[1]
+                        velocity += [(curry - prevy)/dt]
+                        predictedMeanPos += [curry + velocity[-1]*.05]
+                        currentMeanPos += [curry]
+                        prevMeanPos += [prevy]
+                    # Check if the ball is in its spawning position
+                    elif round(objectStateEstimate.objects[i].meanPosition()[0]*10) == round(-1*10) and round(objectStateEstimate.objects[i].meanPosition()[1]*10) == round(-.5*10):
+                        ball = 1
+                # Iterate through potential targets and see if open
+                target = -1
+                res = 100
+                maxDiff = 0
+                for i in range(1,res+1):
+                    # Total goal width approx 2, resoltuion 100
+                    currTarget = 1.0 - 2.0*float(i)/float(res)
+                    # Count number of obstacles outside target window
+                    count = 0
+                    diffs = []
+                    for j in range(0,len(predictedMeanPos)):
+                        if abs(predictedMeanPos[j]-currTarget) > 1:
+                            count += 1
+                            diffs += [abs(predictedMeanPos[j]-currTarget)]
+                    # Update the target if it's open
+                    # Note: In terms of res unit (easier to convert to
+                    # proper angle adjustment)
+                    if count == len(predictedMeanPos) and min(diffs) > maxDiff:
+                        maxDiff = min(diffs)
+                        print maxDiff
+                        target = i
+                # If a target is open and the ball is in its spawning 
+                # position, then set the angle (-.1 = rightmost, .8 = leftmost)
+                # and strike (also update preObjectState)
+                if target != -1 and ball == 1:
+                    self.qdes[5] = .8 - .9*float(target)/float(res)
+                    print '--------------------'
+                    print 'target coord:'
+                    print currTarget
+                    print 'target:'
+                    print target
+                    print 'angle:'
+                    print self.qdes[5]
+                    print 'Prev'
+                    print prevMeanPos
+                    print 'current'
+                    print currentMeanPos
+                    print 'predicted'
+                    print predictedMeanPos
+                    print '--------------------'
+                    self.preObjectState = objectStateEstimate.objects
+                    self.state = 'strike'   
+            """
+            print 'hello'
+            for obj in objectStateEstimate.objects:
+                print obj.meanPosition()
+        elif self.state == 'strike':
+            # Motion Queue Method for Striking
+            self.qdes[1] = 1.8
+            self.setRobotConfig(robotController,.2)
+            if self.checkCompleteConfig(robotController,'reverting'):
+                self.tries += 1
+        elif self.state == 'reverting':
+            # Motion Queue Method for Striking
+            self.qdes[1] = 1.6
+            self.qdes[2] = -2.2
+            self.setRobotConfig(robotController,.2)
+            self.checkCompleteConfig(robotController,'waiting')
+        elif self.state == 'done':
+            print 'done'
+            pass
         elif self.state == 'user':
             #use the user-mode control
             robotController.setPIDCommand(self.qdes,[0.0]*7)
@@ -271,16 +267,16 @@ class MyController:
         object position / velocity estimates from your state estimator.  Event C
         folks should set gravity=0 in the following code.
         """
-	glDisable(GL_LIGHTING)
-	glColor3f(100,100,100)
-	glPointSize(5.0)
-	gldraw.point([0,0,0])
-	gldraw.point([1,0,0])
-	gldraw.point([0,1,0])
-	gldraw.point([0,0,1])
-	gldraw.point([2.025,0,0])
-	# Camera Location
-	gldraw.point([-1.5,-.5,.25])
+        glDisable(GL_LIGHTING)
+        glColor3f(100,100,100)
+        glPointSize(5.0)
+        gldraw.point([0,0,0])
+        gldraw.point([1,0,0])
+        gldraw.point([0,1,0])
+        gldraw.point([0,0,1])
+        gldraw.point([2.025,0,0])
+        # Camera Location
+        gldraw.point([-1.5,-.5,.25])
         if self.objectEstimates:
             for o in self.objectEstimates.objects:
                 glDisable(GL_LIGHTING)
