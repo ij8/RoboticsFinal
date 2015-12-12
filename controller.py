@@ -110,20 +110,19 @@ class MyController:
         # Obtains the model for the robot       
         robot = self.world.robot(0)
         if self.state == 'waiting':
-            """
             if self.tries == self.maxTries:
               self.state = 'done'
               pass
-            """
             #TODO: do something..
             # Motion Queue Method for Batting
             self.qdes = [0,1.3,-2.37,-.8,1.5,.3,0]
             self.setRobotConfig(robotController,1)
             self.checkCompleteConfig(robotController,'sensing')
+            self.prevWallPos = []
+            self.prevWallVel = []
+            self.prevWallAcc = []
+            self.prevWallJer = []
         elif self.state == 'sensing':
-            print 'hello'
-            for obj in objectStateEstimate.objects:
-                print obj.meanPosition()
             """ 
             Acquiring displacement estimate based on velocity, acceleration,
             and jerk estimates. Need to use the following equation:
@@ -168,6 +167,7 @@ class MyController:
                 target = -1
                 res = 100
                 maxDiff = 0
+                minDist = 1.5
                 for i in range(1,res+1):
                     # Total goal width approx 2, resoltuion 100
                     currTarget = 1.0 - 2.0*float(i)/float(res)
@@ -175,7 +175,7 @@ class MyController:
                     count = 0
                     diffs = []
                     for j in range(0,len(predictedMeanPos)):
-                        if abs(predictedMeanPos[j]-currTarget) > 1:
+                        if abs(predictedMeanPos[j]-currTarget) > minDist:
                             count += 1
                             diffs += [abs(predictedMeanPos[j]-currTarget)]
                     # Update the target if it's open
@@ -188,10 +188,10 @@ class MyController:
                 # position, then set the angle (-.1 = rightmost, .8 = leftmost)
                 # and strike (also update preObjectState)
                 if target != -1 and self.checkBall(objectStateEstimate):
-                    self.qdes[5] = .8 - .9*float(target)/float(res)
+                    self.qdes[5] = 1 - 1.2*float(target)/float(res)
                     print '--------------------'
                     print 'target coord:'
-                    print currTarget
+                    print 1.0 - 2.0*float(i)/float(res)
                     print 'target:'
                     print target
                     print 'angle:'
