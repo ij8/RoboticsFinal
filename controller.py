@@ -169,7 +169,7 @@ class MyController:
                     j0 = self.prevWallJer[-1][i]
                     s = currentWallSnap[i]
                     predictedMeanPos += [x0 + v0*t + a0*t**2/2 + j0*t**3/6 + s*t**4/12]
-                print predictedMeanPos
+                #print predictedMeanPos
                 self.prevWallPos.pop(0)
                 self.prevWallVel.pop(0)
                 self.prevWallAcc.pop(0)
@@ -200,6 +200,7 @@ class MyController:
                 # and strike (also update preObjectState)
                 if target != -1 and self.checkBall(objectStateEstimate):
                     self.qdes[5] = 1 - 1.2*float(target)/float(res)
+                    """
                     print '--------------------'
                     print 'target coord:'
                     print 1.0 - 2.0*float(i)/float(res)
@@ -212,6 +213,7 @@ class MyController:
                     print 'predicted'
                     print predictedMeanPos
                     print '--------------------'
+                    """
                     self.state = 'strike'   
         elif self.state == 'strike':
             # Motion Queue Method for Striking

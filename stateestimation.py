@@ -70,5 +70,7 @@ class MyObjectStateEstimator:
         """Produces an updated MultiObjectStateEstimate given a CameraColorDetectorOutput
         sensor reading."""
         #TODO
+        for i in range(0,len(observation.blobs)):
+            print "blob", i," x coord: ", observation.blobs[i].w
         return MultiObjectStateEstimate([])
 
