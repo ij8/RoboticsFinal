@@ -103,57 +103,11 @@ class MyController:
 	    self.checkCompleteConfig(robotController,'sensing')
 	elif self.state == 'sensing':
 	    """
-		[x,y,z] = [front, left, up]
-		The algorithm below uses blob detector to check to see if a 
-		region is currently free and if the ball has respawned. If 
-		these conditions hold then the robot strkes.
-	    """
-	    """
-	    # Variables to keep track of number of walls overall, number
-	    # of walls that are clear of the specified region, and 
-	    # if the ball is spawned.
-	    wallCount = 0
-	    leftClear = 0
-	    rightClear = 0
-	    centerClear = 0
-	    ball = 0
-	    # Check position of each object in the blob detector
-	    for obj in objectStateEstimate.objects:
-		# Assume that walls are at least a certain distance away		
-		if obj.meanPosition()[0] > .2:
-		    wallCount += 1	
-		    # Check if mean position of y coordinate of obj is in line of fire	
-		    if obj.meanPosition()[1] > 1.25 or obj.meanPosition()[1] < -.2:
-			leftClear += 1
-		    if obj.meanPosition()[1] > .2 or obj.meanPosition()[1] < -1.25:
-			rightClear += 1
-		    if obj.meanPosition()[1] > .75 or obj.meanPosition()[1] < -.75:
-			centerClear += 1
-		# Check if the ball is in its spawning position
-		if round(obj.meanPosition()[0]*10) == round(-1*10) and round(obj.meanPosition()[1]*10) == round(-.5*10):
-		    ball = 1
-	    print 'left' + str(leftClear)
-	    print 'right' + str(rightClear)
-	    print 'center' + str(centerClear)
-	    # Strike if region clear and ball is present
-	    if leftClear == wallCount and ball == 1:
-		self.qdes[5] = .65
-		self.state = 'strike'
-	    elif rightClear == wallCount and ball == 1:
-		self.qdes[5] = -.02
-		self.state = 'strike'
-	    elif centerClear == wallCount and ball == 1:
-		self.qdes[5] = .3
-		self.state = 'strike'
-	    """
-	
-	    """
 		The algorithm below uses blob detector to check what regions
 		might become free in by the time the ball would get to them
 		(2 second estimate). If a potentially free region exists,
 		set the angle of the end effector and strike.
 	    """ 
-	    #"""
 	    # Establish velocity 
 	    if self.prevObjectState == None:
 		self.prevObjectState = objectStateEstimate.objects
@@ -218,7 +172,6 @@ class MyController:
 		    print '--------------------'
 		    self.preObjectState = objectStateEstimate.objects
 		    self.state = 'strike'		
-	    #"""
 	elif self.state == 'strike':
 	    # Motion Queue Method for Striking
 	    self.qdes[1] = 1.8
