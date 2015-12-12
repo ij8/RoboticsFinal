@@ -44,6 +44,16 @@ class MyController:
 	#self.timer = 0.0 
         pass
 
+    def checkCompleteConfig(self,robotController,nextState):
+	count = 0	
+	qsns = robotController.getSensedConfig()
+	for i in range(0,len(self.qdes)):
+	    if round(self.qdes[i]*10**2) == round(qsns[i]*10**2):
+		count += 1
+	if count == len(self.qdes):
+	    self.state = nextState
+	return count == len(self.qdes)
+
     def myPlayerLogic(self,
                       dt,
                       sensorReadings,
@@ -90,13 +100,7 @@ class MyController:
 	    dt = 1
 	    robotController.setMilestone([0.0]*7,[0.0]*7)
 	    robotController.setCubic(self.qdes,[0.0]*7,dt)
-	    count = 0
-	    qsns = robotController.getSensedConfig()
-	    for i in range(0,len(self.qdes)):
-		if round(self.qdes[i]*10**2) == round(qsns[i]*10**2):
-		    count += 1
-	    if count == len(self.qdes):
-	        self.state = 'sensing'
+	    self.checkCompleteConfig(robotController,'sensing')
 	elif self.state == 'sensing':
 	    """
 		[x,y,z] = [front, left, up]
@@ -174,20 +178,25 @@ class MyController:
 
 		target = -1
 		res = 100
+		maxDiff = 0
 		for i in range(1,res+1):
 		    # Total goal width approx 2, resoltuion 100
 		    currTarget = 1.0 - 2.0*float(i)/float(res)
 		    # Count number of obstacles outside target window
 		    count = 0
+		    diffs = []
 		    for j in range(0,len(predictedMeanPos)):
 			if abs(predictedMeanPos[j]-currTarget) > 1:
 			    count += 1
+			    diffs += [abs(predictedMeanPos[j]-currTarget)]
+			    print min(diffs)
 		    # Update the target if it's open
 		    # Note: In terms of res unit (easier to convert to
 		    # proper angle adjustment)
-		    if count == len(predictedMeanPos):
+		    if count == len(predictedMeanPos) and min(diffs) > maxDiff:
+			maxDiff = min(diffs)
+			print maxDiff
 			target = i
-			break
 		# If a target is open and the ball is in its spawning 
 		# position, then set the angle (-.1 = rightmost, .8 = leftmost)
 		# and strike (also update preObjectState)
@@ -216,14 +225,8 @@ class MyController:
 	    dt = .11
 	    robotController.setMilestone([0.0]*7,[0.0]*7)
 	    robotController.setCubic(self.qdes,[0.0]*7,dt)
-	    count = 0
-	    qsns = robotController.getSensedConfig()
-	    for i in range(0,len(self.qdes)):
-		if round(self.qdes[i]*10**2) == round(qsns[i]*10**2):
-		    count += 1
-	    if count == len(self.qdes):
+	    if self.checkCompleteConfig(robotController,'reverting'):
 		self.tries += 1
-	        self.state = 'reverting'
 	elif self.state == 'reverting':
 	    # Motion Queue Method for Striking
 	    self.qdes[1] = 1.6
@@ -231,13 +234,7 @@ class MyController:
 	    dt = .2
 	    robotController.setMilestone([0.0]*7,[0.0]*7)
 	    robotController.setCubic(self.qdes,[0.0]*7,dt)
-	    count = 0
-	    qsns = robotController.getSensedConfig()
-	    for i in range(0,len(self.qdes)):
-		if round(self.qdes[i]*10**2) == round(qsns[i]*10**2):
-		    count += 1
-	    if count == len(self.qdes):
-	        self.state = 'waiting'
+	    self.checkCompleteConfig(robotController,'waiting')
 	elif self.state == 'done':
 	    print 'done'
 	    pass
@@ -248,7 +245,7 @@ class MyController:
             #TODO: do something else...
             #may want to add other states into this if block...
             pass
-        return   
+        return
     def loop(self,dt,robotController,sensorReadings):
         """Called every control loop (every dt seconds).
         Input:
@@ -329,6 +326,8 @@ class MyController:
 	gldraw.point([0,1,0])
 	gldraw.point([0,0,1])
 	gldraw.point([2.025,0,0])
+	# Camera Location
+	gldraw.point([-1.5,-.5,.25])
         if self.objectEstimates:
             for o in self.objectEstimates.objects:
                 glDisable(GL_LIGHTING)
